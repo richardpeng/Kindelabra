@@ -65,7 +65,7 @@ class Kindle:
     '''Access a Kindle filesystem
     '''
     def __init__(self, root):
-        self.root = root
+        self.root = unicode(root)
 
     def init_data(self):
         self.files = dict()
@@ -106,6 +106,7 @@ class Kindle:
 
     # Returns a SHA-1 hash
     def get_hash(self, path):
+        path = unicode(path).encode('utf-8')
         return hashlib.sha1(path).hexdigest()
 
     # Checks if the specified folder is a Kindle filestructure

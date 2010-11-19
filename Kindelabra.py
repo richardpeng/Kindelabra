@@ -1,79 +1,100 @@
 #!/usr/bin/env python
 
-import kindle
-import sys
-import gtk
 import os
-import time
 import datetime
-import codecs
 import json
 import re
 
+import gtk
+import kindle
+
+VERSION = '0.1'
 FILTER = ['pdf', 'mobi', 'prc', 'txt', 'tpz', 'azw', 'manga']
 
 class KindleUI:
     '''Interface for manipulating a Kindle collection JSON file
     '''
     def __init__(self):
-        dic = {
-            "on_windowMain_destroy" : self.quit,
-            "on_revert_clicked" : self.revert,
-            "on_save_clicked" : self.save,
-            "on_select_folder" : self.load,
-            "on_refresh_clicked" : self.refresh,
-            "on_add_collection_clicked" : self.add_collection,
-            "on_del_collection_clicked" : self.del_collection,
-            "on_add_file_clicked" : self.add_file,
-            "on_del_file_clicked" : self.del_file,
-            "on_open_clicked" : self.open_collection,
-            "on_rename_clicked" : self.rename_collection,
-        }
-        gladefile = "kindle.glade"
-        self.wTree = gtk.Builder()
-        self.wTree.add_from_file(gladefile)
-        self.window = self.wTree.get_object("window")
-        if self.window:
-            self.window.connect("destroy", gtk.main_quit)
-        self.wTree.connect_signals(dic)
-        self.window.show()
-        self.filemodel = gtk.TreeStore(str, str)
-        container = self.wTree.get_object('filescroll')
-        if not container.get_child():
-            container.add(self.get_view('Files', self.filemodel, 'fileview'))
-            container.show_all()
-        self.colmodel = gtk.TreeStore(str, str)
-        container = self.wTree.get_object('colscroll')
-        if not container.get_child():
-            container.add(self.get_view('Collections', self.colmodel, 'colview'))
-            container.show_all()
         self.root = os.getcwd()
+        self.filemodel = gtk.TreeStore(str, str)
+        self.fileview = self.get_view('Files', self.filemodel, 'fileview')
+        self.colmodel = gtk.TreeStore(str, str)
+        self.colview = self.get_view('Collections', self.colmodel, 'colview')
+
+        self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
+        self.window.set_title("Kindelabra v%s" % VERSION)
+        self.window.connect("destroy", gtk.main_quit)
+        vbox_main = gtk.VBox()
+        filechooserdiag = gtk.FileChooserDialog("Select your Kindle folder", self.window,
+                                     gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER, 
+                                    (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT,
+                                     gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
+        filechooserdiag.set_current_folder(os.path.join(self.root, 'system'))
+        self.filechooser = gtk.FileChooserButton(filechooserdiag)
+        self.filechooser.connect("current-folder-changed", self.load)
+        
+        file_toolbar = gtk.HBox()
+        file_toolbar.pack_start(self.filechooser, True, True, 2)
+        file_toolbar.pack_start(self.get_button('gtk-refresh', self.refresh), False, True, 2)
+        file_toolbar.pack_start(self.get_button('gtk-open', self.open_collection), False, True, 2)
+        file_toolbar.pack_start(gtk.VSeparator(), False, True, 2)
+        file_toolbar.pack_start(self.get_button('gtk-save', self.save), False, True, 2)
+        
+        hbox_main = gtk.HBox()
+        filescroll = gtk.ScrolledWindow()
+        filescroll.add(self.fileview)
+        colscroll = gtk.ScrolledWindow()
+        colscroll.add(self.colview)
+        col_toolbar = gtk.VBox()
+        col_toolbar.pack_start(self.get_button('gtk-new', self.add_collection), False, True, 2)
+        col_toolbar.pack_start(self.get_button('gtk-edit', self.rename_collection), False, True, 2)
+        col_toolbar.pack_start(self.get_button('gtk-remove', self.del_collection), False, True, 2)
+        col_toolbar.pack_start(gtk.HSeparator(), False, True, 7)
+        col_toolbar.pack_start(self.get_button('gtk-go-forward', self.add_file), False, True, 2)
+        col_toolbar.pack_start(self.get_button('gtk-go-back', self.del_file), False, True, 2)
+        col_toolbar.pack_start(gtk.HSeparator(), False, True, 7)
+        col_toolbar.pack_start(self.get_button('gtk-revert-to-saved', self.revert), False, True, 2)
+
+        hbox_main.add(filescroll)
+        hbox_main.pack_start(col_toolbar, False, False, 2)
+        hbox_main.add(colscroll)
+        
+        self.statusbar = gtk.Statusbar()
+
+        vbox_main.pack_start(file_toolbar, False)
+        vbox_main.add(hbox_main)
+        vbox_main.pack_start(self.statusbar, False)
+
+        self.window.add(vbox_main)
+        self.window.show_all()
         self.status("Select your Kindle's home folder")
         gtk.main()
 
+    def get_button(self, image, cb):
+        button = gtk.Button()
+        label = gtk.Image()
+        label.set_from_stock(image, gtk.ICON_SIZE_LARGE_TOOLBAR)
+        button.set_image(label)
+        button.connect("clicked", cb)
+        return button
+
     def status(self, message):
-        sbar = self.wTree.get_object('statusbar')
+        sbar = self.statusbar
         sbar.pop(1)
         sbar.push(1, message)
 
     def load(self, widget):
-        current = self.wTree.get_object('folderchooser').get_current_folder()
+        current = self.filechooser.get_current_folder()
         if not self.root == current:
-            #print "loading"
             self.status("Loading... please wait")
             self.root = current
-            #print "make kindle object"
             self.kindle = kindle.Kindle(self.root)
-            #print "done"
             self.filemodel.clear()
             self.colmodel.clear()
             if self.kindle.is_connected():
-                #print "loading db"
                 self.colfile = os.path.join(self.root, 'system', 'collections.json')
                 self.db = kindle.CollectionDB(self.colfile)
-                #print "refreshing"
                 self.refresh(widget)
-                #print "reverting"
                 self.revert(widget)
                 self.status("Kindle Loaded")
             else:
@@ -96,9 +117,7 @@ class KindleUI:
             colname = input_box.get_text().strip()
         dialog.destroy()
         if not colname == "":
-            treeview = self.wTree.get_object('colscroll').get_child()
-            model = treeview.get_model()
-            model.append(None, [colname, ""])
+            self.colmodel.append(None, [colname, ""])
             self.db[colname] = kindle.Collection({ 'locale': 'en-US', 'items': [], 'lastAccess': 0})
 
     def collection_prompt(self, title, label):
@@ -115,7 +134,7 @@ class KindleUI:
         return (dialog, col_input)
 
     def del_collection(self, widget):
-        (colstore, rows) = self.wTree.get_object('colscroll').get_child().get_selection().get_selected_rows()
+        (colstore, rows) = self.colview.get_selection().get_selected_rows()
         collections = list()
         for row in rows:
             if len(row) == 1:
@@ -130,7 +149,7 @@ class KindleUI:
                 self.status("Collection not in database" + collection)
 
     def rename_collection(self, widget):
-        (colstore, rows) = self.wTree.get_object('colscroll').get_child().get_selection().get_selected_rows()
+        (colstore, rows) = self.colview.get_selection().get_selected_rows()
         collections = list()
         for row in rows:
             if len(row) == 1:
@@ -193,8 +212,8 @@ class KindleUI:
 
     def add_file(self, widget):
         self.status('')
-        (filestore, filerows) = self.wTree.get_object('filescroll').get_child().get_selection().get_selected_rows()
-        (colstore, colrows) = self.wTree.get_object('colscroll').get_child().get_selection().get_selected_rows()
+        (filestore, filerows) = self.fileview.get_selection().get_selected_rows()
+        (colstore, colrows) = self.colview.get_selection().get_selected_rows()
         
         colpaths = list()
         for row in colrows:
@@ -208,6 +227,8 @@ class KindleUI:
         for path in colpaths:
             gtkrow = gtk.TreeRowReference(colstore, path)
             targetcols.append((path, self.get_path_value(colstore, gtkrow)[0]))
+        if len(targetcols) == 0:
+            self.status("Select a target collection to add")
 
         filehashes = self.get_hashes(filestore, filerows)
         for filename, filehash in filehashes:
@@ -221,11 +242,11 @@ class KindleUI:
                         self.status("%s is already in collection %s" % (filename, colname))
                 else:
                     self.status("No such collection:" + colname)
-        self.wTree.get_object('colscroll').get_child().expand_all()
+        self.colview.expand_all()
 
     def del_file(self, widget):
         self.status('')
-        (colstore, rows) = self.wTree.get_object('colscroll').get_child().get_selection().get_selected_rows()
+        (colstore, rows) = self.colview.get_selection().get_selected_rows()
         ref = list()
         for row in rows:
             if len(row) == 2:
@@ -260,11 +281,9 @@ class KindleUI:
 
     def revert(self, widget):
         self.db = kindle.CollectionDB(self.colfile)
-        treeview = self.wTree.get_object('colscroll').get_child()
-        colmodel = treeview.get_model()
-        colmodel.clear()
-        self.get_collections(colmodel)
-        treeview.expand_all()
+        self.colmodel.clear()
+        self.get_collections(self.colmodel)
+        self.colview.expand_all()
         self.status("Kindle collections reloaded")
 
     def save(self, widget):
@@ -287,13 +306,6 @@ class KindleUI:
                 tree['files'] = list()
             tree['files'].append(nodes[0])
 
-    def get_nodes(self, tree, nodes):
-        for node in tree:
-            print node
-        #if 'files' in tree:
-            #for filename in tree['files']:
-                #pass
-
     def get_files(self, filemodel, tree, piter=None, path=""):
         for node in tree:
             if node == 'files':
@@ -301,57 +313,22 @@ class KindleUI:
                     filehash = self.kindle.get_hash('/mnt/us' + '/'.join([path, filename]))
                     filemodel.append(piter, [filename, filehash])
             else:
-                #print node
                 niter = filemodel.append(piter, [node, ""])
-                #print "do something", niter
-                #print node
-                #print tree[node].keys()
                 self.get_files(filemodel, tree[node], niter, '/'.join([path,node]))
-                #print node
-                #print tree[node].keys()
-                #piter = filemodel.append(piter, [node, ""])
-                #for cnode in tree[node]:
-                    #if not cnode == 'files':
-                        #print "add subnode", cnode
-                        #citer = filemodel.append(piter, [cnode, ""])
-                        #print tree[node][cnode]
-                        #self.get_files(filemodel, tree[node][cnode], citer)
-                #print
-        #print self.kindle.filetree
-        #get files from kindle object
-        #filetree = dict()
-        #for filehash in self.kindle.files:
-            #filesplit = re.sub(r'.*?(documents|pictures)/', '', self.kindle.files[filehash]).split('/')
-            #for part in filesplit:
-                
-                #print part, filesplit.index(part) == len(filesplit)-1
-        """roots = dict()
-        for root, dirs, files in os.walk(os.path.join(self.root, 'documents')):
-            for subdir in dirs:
-                roots[os.path.join(root, subdir)] = filemodel.append(roots.get(root, None), [subdir, ""])
-            for filename in files:
-                if os.path.splitext(filename)[1][1:] in FILTER:
-                    kindlepath = self.kindle.get_kindle_path(root, filename)
-                    kindlehash = self.kindle.get_hash(kindlepath)
-                    filemodel.append(roots.get(root, None), [filename, kindlehash])
-        if os.path.exists(os.path.join(self.root, 'pictures')):
-            for root, dirs, files in os.walk(os.path.join(self.root, 'pictures')):
-                for subdir in dirs:
-                    roots[os.path.join(root, subdir)] = filemodel.append(roots.get(root, None), [subdir, ""])
-                for filename in files:
-                    if os.path.splitext(filename)[1][1:] in FILTER:
-                        kindlepath = self.kindle.get_kindle_path(root, filename)
-                        kindlehash = self.kindle.get_hash(kindlepath)
-                        filemodel.append(roots.get(root, None), [filename, kindlehash])
-        return roots"""
 
     def refresh(self, widget):
         self.kindle.init_data()
-        treeview = self.wTree.get_object('filescroll').get_child()
-        filemodel = treeview.get_model()
-        filemodel.clear()
-        self.get_files(filemodel, self.kindle.filetree)
-        treeview.expand_all()
+        #treeview = self.wTree.get_object('filescroll').get_child()
+        #filemodel = treeview.get_model()
+        #treeview.freeze_child_notify()
+        #treeview.set_model(None)
+        #filemodel.clear()
+        self.filemodel.clear()
+        self.get_files(self.filemodel, self.kindle.filetree)
+        #treeview.set_model(filemodel)
+        #treeview.thaw_child_notify()
+        #treeview.expand_all()
+        self.fileview.expand_all()
         self.status("File list refreshed")
 
     def open_collection(self, widget):
@@ -368,7 +345,5 @@ class KindleUI:
             self.revert(widget)
         dialog.destroy()
 
-    def quit(self):
-        sys.exit(0)
-
-KindleUI()
+if __name__ == "__main__":
+    KindleUI()

@@ -23,6 +23,7 @@ class KindleUI:
 
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
         self.window.set_title("Kindelabra v%s" % VERSION)
+        self.window.set_default_size(1000, 700)
         self.window.connect("destroy", gtk.main_quit)
         vbox_main = gtk.VBox()
         filechooserdiag = gtk.FileChooserDialog("Select your Kindle folder", self.window,
@@ -79,9 +80,8 @@ class KindleUI:
         return button
 
     def status(self, message):
-        sbar = self.statusbar
-        sbar.pop(1)
-        sbar.push(1, message)
+        self.statusbar.pop(1)
+        self.statusbar.push(1, message)
 
     def load(self, widget):
         current = self.filechooser.get_current_folder()
@@ -168,12 +168,12 @@ class KindleUI:
                     self.db[newname] = self.db[colname]
                     del self.db[colname]
             else:
-                self.status('')
+                self.statusbar.pop(1)
             dialog.destroy()
         elif len(collections) > 1:
             self.status("Select a single collection to rename")
         else:
-            self.status('')
+            self.statusbar.pop(1)
 
     def get_path_value(self, model, row):
         if isinstance(row, gtk.TreeRowReference):
@@ -211,7 +211,7 @@ class KindleUI:
         return filehashes
 
     def add_file(self, widget):
-        self.status('')
+        self.statusbar.pop(1)
         (filestore, filerows) = self.fileview.get_selection().get_selected_rows()
         (colstore, colrows) = self.colview.get_selection().get_selected_rows()
         
@@ -245,7 +245,7 @@ class KindleUI:
         self.colview.expand_all()
 
     def del_file(self, widget):
-        self.status('')
+        self.statusbar.pop(1)
         (colstore, rows) = self.colview.get_selection().get_selected_rows()
         ref = list()
         for row in rows:
@@ -294,7 +294,7 @@ class KindleUI:
             os.rename(jsonfile, backup)
         with open(os.path.join(self.root, 'system', 'collections.json'), 'wb') as colfile:
             json.dump(self.db.toKindleDb(), colfile, separators=(',', ':'), ensure_ascii=True)
-        self.status("Collections saved to Kindle")
+        self.status("Collections saved to Kindle, restart to load your new collections")
 
     def get_filenodes(self, tree, nodes):
         if len(nodes) > 1:
@@ -318,16 +318,8 @@ class KindleUI:
 
     def refresh(self, widget):
         self.kindle.init_data()
-        #treeview = self.wTree.get_object('filescroll').get_child()
-        #filemodel = treeview.get_model()
-        #treeview.freeze_child_notify()
-        #treeview.set_model(None)
-        #filemodel.clear()
         self.filemodel.clear()
         self.get_files(self.filemodel, self.kindle.filetree)
-        #treeview.set_model(filemodel)
-        #treeview.thaw_child_notify()
-        #treeview.expand_all()
         self.fileview.expand_all()
         self.status("File list refreshed")
 

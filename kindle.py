@@ -4,11 +4,11 @@ import hashlib
 import os
 import re
 import json
+import sys
 
 KINDLEROOT = '/mnt/us'
 FILTER = ['pdf', 'mobi', 'prc', 'txt', 'tpz', 'azw', 'manga']
 FOLDERS = ['documents', 'pictures']
-#FOLDERS = ['documents']
 
 class Collection(dict):
     '''Holds a single collection
@@ -66,8 +66,6 @@ class Kindle:
     '''
     def __init__(self, root):
         self.root = root
-        #self.files = dict()
-        #self.init_data()
 
     def init_data(self):
         self.files = dict()
@@ -75,38 +73,21 @@ class Kindle:
         if self.is_connected():
             for folder in FOLDERS:
                 self.load_folder(folder)
-            #self.load_folder('documents')
-            #self.load_folder('pictures')
-            """for root, dirs, files in os.walk(os.path.join(self.root, 'documents')):
-                for filename in files:
-                    kindlepath = self.get_kindle_path(root, filename)
-                    self.get_filenodes(self.filetree, re.sub(r'.*?(?=/(documents|pictures))', '', kindlepath).split('/')[1:])
-                    filehash = self.get_hash(kindlepath)
-                    self.files[filehash] = kindlepath"""
-            """if os.path.exists(os.path.join(self.root, 'pictures')):
-                for root, dirs, files in os.walk(os.path.join(self.root, 'pictures')):
-                    for filename in files:
-                        if os.path.splitext(filename)[1][1:] in FILTER:
-                            kindlepath = self.get_kindle_path(root, filename)
-                            print re.sub(r'.*?(?=/documents|pictures)', '', kindlepath)
-                            self.get_filenodes(self.filetree, re.sub(r'.*?(?=/(documents|pictures))', '', kindlepath).split('/')[1:])
-                            #self.get_filenodes(self.filetree, kindlepath.split('/'))
-                            filehash = self.get_hash(kindlepath)
-                            self.files[filehash] = kindlepath"""
             
             for path in self.files:
                 regex = re.compile(r'.*?/(%s)' % '|'.join(FOLDERS))
                 self.get_filenodes(self.filetree, re.sub(regex, r'\1', self.files[path]).split('/'))
-            #print self.filetree.keys()
 
     def load_folder(self, path):
+        sys.stdout.write("Loading " + path)
         for root, dirs, files in os.walk(os.path.join(self.root, path)):
             for filename in files:
                 if os.path.splitext(filename)[1][1:] in FILTER:
                     kindlepath = self.get_kindle_path(root, filename)
                     filehash = self.get_hash(kindlepath)
                     self.files[filehash] = kindlepath
-                    #print "Loaded:", filename
+                    sys.stdout.write(".")
+        sys.stdout.write("\n")
 
     # Adds files to the dictionary: tree
     def get_filenodes(self, tree, nodes):

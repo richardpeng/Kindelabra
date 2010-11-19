@@ -19,7 +19,7 @@
                 <property name="visible">True</property>
                 <property name="action">select-folder</property>
                 <property name="create_folders">False</property>
-                <signal name="selection_changed" handler="on_select_folder"/>
+                <signal name="current_folder_changed" handler="on_select_folder"/>
               </object>
               <packing>
                 <property name="padding">2</property>

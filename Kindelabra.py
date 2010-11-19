@@ -2,13 +2,13 @@
 
 import kindle
 import sys
-import pygtk
 import gtk
 import os
 import time
 import datetime
 import codecs
 import json
+import re
 
 FILTER = ['pdf', 'mobi', 'prc', 'txt', 'tpz', 'azw', 'manga']
 
@@ -47,7 +47,8 @@ class KindleUI:
         if not container.get_child():
             container.add(self.get_view('Collections', self.colmodel, 'colview'))
             container.show_all()
-        self.status("Select your Kindle's top folder")
+        self.root = os.getcwd()
+        self.status("Select your Kindle's home folder")
         gtk.main()
 
     def status(self, message):
@@ -56,16 +57,27 @@ class KindleUI:
         sbar.push(1, message)
 
     def load(self, widget):
-        self.root = self.wTree.get_object('folderchooser').get_current_folder()
-        self.kindle = kindle.Kindle(self.root)
-        self.filemodel.clear()
-        self.colmodel.clear()
-        if self.kindle.is_connected():
-            self.colfile = os.path.join(self.root, 'system', 'collections.json')
-            self.db = kindle.CollectionDB(self.colfile)
-            self.refresh(widget)
-            self.revert(widget)
-            self.status("Kindle Loaded")
+        current = self.wTree.get_object('folderchooser').get_current_folder()
+        if not self.root == current:
+            #print "loading"
+            self.status("Loading... please wait")
+            self.root = current
+            #print "make kindle object"
+            self.kindle = kindle.Kindle(self.root)
+            #print "done"
+            self.filemodel.clear()
+            self.colmodel.clear()
+            if self.kindle.is_connected():
+                #print "loading db"
+                self.colfile = os.path.join(self.root, 'system', 'collections.json')
+                self.db = kindle.CollectionDB(self.colfile)
+                #print "refreshing"
+                self.refresh(widget)
+                #print "reverting"
+                self.revert(widget)
+                self.status("Kindle Loaded")
+            else:
+                self.status("Kindle files not found")
 
     def get_collections(self, colmodel):
         for collection in self.db:
@@ -75,27 +87,6 @@ class KindleUI:
                 if namehash in self.kindle.files:
                     filename = os.path.basename(self.kindle.files[namehash])
                     fiter = colmodel.append(citer, [filename, namehash])
-
-    def get_files(self, filemodel):
-        roots = dict()
-        for root, dirs, files in os.walk(os.path.join(self.root, 'documents')):
-            for subdir in dirs:
-                roots[os.path.join(root, subdir)] = filemodel.append(roots.get(root, None), [subdir, ""])
-            for filename in files:
-                if os.path.splitext(filename)[1][1:] in FILTER:
-                    kindlepath = self.kindle.get_kindle_path(root, filename)
-                    kindlehash = self.kindle.get_hash(kindlepath)
-                    filemodel.append(roots.get(root, None), [filename, kindlehash])
-        if os.path.exists(os.path.join(self.root, 'pictures')):
-            for root, dirs, files in os.walk(os.path.join(self.root, 'pictures')):
-                for subdir in dirs:
-                    roots[os.path.join(root, subdir)] = filemodel.append(roots.get(root, None), [subdir, ""])
-                for filename in files:
-                    if os.path.splitext(filename)[1][1:] in FILTER:
-                        kindlepath = self.kindle.get_kindle_path(root, filename)
-                        kindlehash = self.kindle.get_hash(kindlepath)
-                        filemodel.append(roots.get(root, None), [filename, kindlehash])
-        return roots
 
     def add_collection(self, widget):
         (dialog, input_box) = self.collection_prompt("Add Collection", "New Collection name:")
@@ -134,6 +125,7 @@ class KindleUI:
             if collection in self.db:
                 del self.db[collection]
                 colstore.remove(colstore[col.get_path()].iter)
+                self.status("Deleted collection %s" % collection)
             else:
                 self.status("Collection not in database" + collection)
 
@@ -285,11 +277,80 @@ class KindleUI:
             json.dump(self.db.toKindleDb(), colfile, separators=(',', ':'), ensure_ascii=True)
         self.status("Collections saved to Kindle")
 
+    def get_filenodes(self, tree, nodes):
+        if len(nodes) > 1:
+            if not nodes[0] in tree:
+                tree[nodes[0]] = dict()
+            self.get_filenodes(tree[nodes[0]], nodes[1:])
+        elif len(nodes) == 1:
+            if not 'files' in tree:
+                tree['files'] = list()
+            tree['files'].append(nodes[0])
+
+    def get_nodes(self, tree, nodes):
+        for node in tree:
+            print node
+        #if 'files' in tree:
+            #for filename in tree['files']:
+                #pass
+
+    def get_files(self, filemodel, tree, piter=None, path=""):
+        for node in tree:
+            if node == 'files':
+                for filename in tree['files']:
+                    filehash = self.kindle.get_hash('/mnt/us' + '/'.join([path, filename]))
+                    filemodel.append(piter, [filename, filehash])
+            else:
+                #print node
+                niter = filemodel.append(piter, [node, ""])
+                #print "do something", niter
+                #print node
+                #print tree[node].keys()
+                self.get_files(filemodel, tree[node], niter, '/'.join([path,node]))
+                #print node
+                #print tree[node].keys()
+                #piter = filemodel.append(piter, [node, ""])
+                #for cnode in tree[node]:
+                    #if not cnode == 'files':
+                        #print "add subnode", cnode
+                        #citer = filemodel.append(piter, [cnode, ""])
+                        #print tree[node][cnode]
+                        #self.get_files(filemodel, tree[node][cnode], citer)
+                #print
+        #print self.kindle.filetree
+        #get files from kindle object
+        #filetree = dict()
+        #for filehash in self.kindle.files:
+            #filesplit = re.sub(r'.*?(documents|pictures)/', '', self.kindle.files[filehash]).split('/')
+            #for part in filesplit:
+                
+                #print part, filesplit.index(part) == len(filesplit)-1
+        """roots = dict()
+        for root, dirs, files in os.walk(os.path.join(self.root, 'documents')):
+            for subdir in dirs:
+                roots[os.path.join(root, subdir)] = filemodel.append(roots.get(root, None), [subdir, ""])
+            for filename in files:
+                if os.path.splitext(filename)[1][1:] in FILTER:
+                    kindlepath = self.kindle.get_kindle_path(root, filename)
+                    kindlehash = self.kindle.get_hash(kindlepath)
+                    filemodel.append(roots.get(root, None), [filename, kindlehash])
+        if os.path.exists(os.path.join(self.root, 'pictures')):
+            for root, dirs, files in os.walk(os.path.join(self.root, 'pictures')):
+                for subdir in dirs:
+                    roots[os.path.join(root, subdir)] = filemodel.append(roots.get(root, None), [subdir, ""])
+                for filename in files:
+                    if os.path.splitext(filename)[1][1:] in FILTER:
+                        kindlepath = self.kindle.get_kindle_path(root, filename)
+                        kindlehash = self.kindle.get_hash(kindlepath)
+                        filemodel.append(roots.get(root, None), [filename, kindlehash])
+        return roots"""
+
     def refresh(self, widget):
+        self.kindle.init_data()
         treeview = self.wTree.get_object('filescroll').get_child()
         filemodel = treeview.get_model()
         filemodel.clear()
-        roots = self.get_files(filemodel)
+        self.get_files(filemodel, self.kindle.filetree)
         treeview.expand_all()
         self.status("File list refreshed")
 

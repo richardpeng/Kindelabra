@@ -36,10 +36,10 @@ class KindleUI:
         
         file_toolbar = gtk.HBox()
         file_toolbar.pack_start(self.filechooser, True, True, 2)
-        file_toolbar.pack_start(self.get_button('gtk-refresh', self.refresh), False, True, 2)
-        file_toolbar.pack_start(self.get_button('gtk-open', self.open_collection), False, True, 2)
+        file_toolbar.pack_start(self.get_button('gtk-refresh', 'Refresh files', self.refresh), False, True, 2)
+        file_toolbar.pack_start(self.get_button('gtk-open', 'Open collection file', self.open_collection), False, True, 2)
         file_toolbar.pack_start(gtk.VSeparator(), False, True, 2)
-        file_toolbar.pack_start(self.get_button('gtk-save', self.save), False, True, 2)
+        file_toolbar.pack_start(self.get_button('gtk-save', 'Save collection file', self.save), False, True, 2)
         
         hbox_main = gtk.HBox()
         filescroll = gtk.ScrolledWindow()
@@ -47,14 +47,14 @@ class KindleUI:
         colscroll = gtk.ScrolledWindow()
         colscroll.add(self.colview)
         col_toolbar = gtk.VBox()
-        col_toolbar.pack_start(self.get_button('gtk-new', self.add_collection), False, True, 2)
-        col_toolbar.pack_start(self.get_button('gtk-edit', self.rename_collection), False, True, 2)
-        col_toolbar.pack_start(self.get_button('gtk-remove', self.del_collection), False, True, 2)
+        col_toolbar.pack_start(self.get_button('gtk-new', 'Create new collection', self.add_collection), False, True, 2)
+        col_toolbar.pack_start(self.get_button('gtk-edit', 'Rename collection', self.rename_collection), False, True, 2)
+        col_toolbar.pack_start(self.get_button('gtk-remove', 'Delete collection', self.del_collection), False, True, 2)
         col_toolbar.pack_start(gtk.HSeparator(), False, True, 7)
-        col_toolbar.pack_start(self.get_button('gtk-go-forward', self.add_file), False, True, 2)
-        col_toolbar.pack_start(self.get_button('gtk-go-back', self.del_file), False, True, 2)
+        col_toolbar.pack_start(self.get_button('gtk-go-forward', 'Add book to collection', self.add_file), False, True, 2)
+        col_toolbar.pack_start(self.get_button('gtk-go-back', 'Remove book from collection', self.del_file), False, True, 2)
         col_toolbar.pack_start(gtk.HSeparator(), False, True, 7)
-        col_toolbar.pack_start(self.get_button('gtk-revert-to-saved', self.revert), False, True, 2)
+        col_toolbar.pack_start(self.get_button('gtk-revert-to-saved', 'Revert collections', self.revert), False, True, 2)
 
         hbox_main.add(filescroll)
         hbox_main.pack_start(col_toolbar, False, False, 2)
@@ -71,11 +71,12 @@ class KindleUI:
         self.status("Select your Kindle's home folder")
         gtk.main()
 
-    def get_button(self, image, cb):
+    def get_button(self, image, tooltip, cb):
         button = gtk.Button()
         label = gtk.Image()
         label.set_from_stock(image, gtk.ICON_SIZE_LARGE_TOOLBAR)
         button.set_image(label)
+        button.set_tooltip_text(tooltip)
         button.connect("clicked", cb)
         return button
 

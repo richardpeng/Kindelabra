@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+#author:Richard Peng
+#project:Kindelabra
+#website:http://www.richardpeng.com/projects/kindelabra/
+#repository:https://github.com/richardpeng/Kindelabra
+#license:Creative Commons GNU GPL v2
+# (http://creativecommons.org/licenses/GPL/2.0/)
 
 import os
 import datetime
@@ -103,7 +109,6 @@ class KindleUI:
 
     def get_collections(self, colmodel):
         for collection in self.db:
-            #print collection
             citer = colmodel.append(None, [collection, ""])
             for namehash in self.db[collection]['items']:
                 namehash = str(namehash.lstrip("*"))

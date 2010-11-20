@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+#author:Richard Peng
+#project:Kindelabra
+#website:http://www.richardpeng.com/projects/kindelabra/
+#repository:https://github.com/richardpeng/Kindelabra
+#license:Creative Commons GNU GPL v2
+# (http://creativecommons.org/licenses/GPL/2.0/)
 
 import hashlib
 import os

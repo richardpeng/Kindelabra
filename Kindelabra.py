@@ -102,6 +102,7 @@ class KindleUI:
 
     def get_collections(self, colmodel):
         for collection in self.db:
+            #print collection
             citer = colmodel.append(None, [collection, ""])
             for namehash in self.db[collection]['items']:
                 namehash = str(namehash.lstrip("*"))
@@ -110,15 +111,21 @@ class KindleUI:
                     fiter = colmodel.append(citer, [filename, namehash])
 
     def add_collection(self, widget):
+        print self.db.keys()
         (dialog, input_box) = self.collection_prompt("Add Collection", "New Collection name:")
         dialog.show_all()
         colname = ""
         if dialog.run() == gtk.RESPONSE_ACCEPT:
-            colname = input_box.get_text().strip()
+            colname = unicode(input_box.get_text().strip())
         dialog.destroy()
-        if not colname == "":
+        if colname == "":
+            return
+        if not colname in self.db:
             self.colmodel.append(None, [colname, ""])
             self.db[colname] = kindle.Collection({ 'locale': 'en-US', 'items': [], 'lastAccess': 0})
+        else:
+            print colname, self.db.keys()
+            self.status("%s collection already exists" % colname)
 
     def collection_prompt(self, title, label):
         labeltext = label

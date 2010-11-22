@@ -117,7 +117,7 @@ class KindleUI:
                     fiter = colmodel.append(citer, [filename, namehash])
 
     def add_collection(self, widget):
-        (dialog, input_box) = self.collection_prompt("Add Collection", "New Collection name:")
+        (dialog, input_box) = self.add_collection_prompt("Add Collection", "New Collection name:")
         dialog.show_all()
         colname = ""
         if dialog.run() == gtk.RESPONSE_ACCEPT:
@@ -126,12 +126,15 @@ class KindleUI:
         if colname == "":
             return
         if not colname in self.db:
-            self.colmodel.append(None, [colname, ""])
+            coliter = self.colmodel.append(None, [colname, ""])
+            treesel = self.colview.get_selection()
+            treesel.unselect_all()
+            treesel.select_iter(coliter)
             self.db[colname] = kindle.Collection({ 'locale': 'en-US', 'items': [], 'lastAccess': 0})
         else:
             self.status("%s collection already exists" % colname)
 
-    def collection_prompt(self, title, label):
+    def add_collection_prompt(self, title, label):
         labeltext = label
         label = gtk.Label(labeltext)
         col_input = gtk.Entry()

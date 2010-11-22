@@ -135,11 +135,13 @@ class KindleUI:
         labeltext = label
         label = gtk.Label(labeltext)
         col_input = gtk.Entry()
+        col_input.set_activates_default(True)
         dialog = gtk.Dialog(title,
             self.window,
             gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
             (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT,
             gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
+        dialog.set_default_response(gtk.RESPONSE_ACCEPT)
         dialog.vbox.pack_start(label)
         dialog.vbox.pack_start(col_input)
         return (dialog, col_input)

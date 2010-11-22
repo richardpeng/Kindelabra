@@ -117,7 +117,6 @@ class KindleUI:
                     fiter = colmodel.append(citer, [filename, namehash])
 
     def add_collection(self, widget):
-        print self.db.keys()
         (dialog, input_box) = self.collection_prompt("Add Collection", "New Collection name:")
         dialog.show_all()
         colname = ""
@@ -130,7 +129,6 @@ class KindleUI:
             self.colmodel.append(None, [colname, ""])
             self.db[colname] = kindle.Collection({ 'locale': 'en-US', 'items': [], 'lastAccess': 0})
         else:
-            print colname, self.db.keys()
             self.status("%s collection already exists" % colname)
 
     def collection_prompt(self, title, label):

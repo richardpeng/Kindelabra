@@ -152,12 +152,23 @@ class KindleUI:
                 collections.append(gtk.TreeRowReference(colstore, row))
         for col in collections:
             collection = unicode(self.get_path_value(colstore, col)[0])
-            if collection in self.db:
+            dialog = self.del_collection_prompt(collection)
+            if dialog.run() == gtk.RESPONSE_ACCEPT and collection in self.db:
                 del self.db[collection]
                 colstore.remove(colstore[col.get_path()].iter)
                 self.status("Deleted collection %s" % collection)
-            else:
-                self.status("Collection not in database" + collection)
+            dialog.destroy()
+
+    def del_collection_prompt(self, title):
+        label = gtk.Label("Delete collection \"%s\"?" % title)
+        dialog = gtk.Dialog("Delete collection",
+                    self.window,
+                    gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT,
+                    (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT,
+                    gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
+        dialog.vbox.pack_start(label)
+        dialog.show_all()
+        return dialog
 
     def rename_collection(self, widget):
         (colstore, rows) = self.colview.get_selection().get_selected_rows()

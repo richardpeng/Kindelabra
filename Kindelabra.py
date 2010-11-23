@@ -31,6 +31,8 @@ class KindleUI:
         self.window.set_title("Kindelabra v%s" % VERSION)
         self.window.set_default_size(1000, 700)
         self.window.connect("destroy", gtk.main_quit)
+        self.accel_group = gtk.AccelGroup()
+        self.window.add_accel_group(self.accel_group)
         vbox_main = gtk.VBox()
         filechooserdiag = gtk.FileChooserDialog("Select your Kindle folder", self.window,
                                      gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER, 
@@ -43,9 +45,9 @@ class KindleUI:
         file_toolbar = gtk.HBox()
         file_toolbar.pack_start(self.filechooser, True, True, 2)
         file_toolbar.pack_start(self.get_button('gtk-refresh', 'Refresh files', self.refresh), False, True, 2)
-        file_toolbar.pack_start(self.get_button('gtk-open', 'Open collection file', self.open_collection), False, True, 2)
+        file_toolbar.pack_start(self.get_button('gtk-open', 'Open collection file', self.open_collection, "O"), False, True, 2)
         file_toolbar.pack_start(gtk.VSeparator(), False, True, 2)
-        file_toolbar.pack_start(self.get_button('gtk-save', 'Save collection file', self.save), False, True, 2)
+        file_toolbar.pack_start(self.get_button('gtk-save', 'Save collection file', self.save, "S"), False, True, 2)
         
         hbox_main = gtk.HBox()
         filescroll = gtk.ScrolledWindow()
@@ -53,8 +55,8 @@ class KindleUI:
         colscroll = gtk.ScrolledWindow()
         colscroll.add(self.colview)
         col_toolbar = gtk.VBox()
-        col_toolbar.pack_start(self.get_button('gtk-new', 'Create new collection', self.add_collection), False, True, 2)
-        col_toolbar.pack_start(self.get_button('gtk-edit', 'Rename collection', self.rename_collection), False, True, 2)
+        col_toolbar.pack_start(self.get_button('gtk-new', 'Create new collection', self.add_collection, "N"), False, True, 2)
+        col_toolbar.pack_start(self.get_button('gtk-edit', 'Rename collection', self.rename_collection, "E"), False, True, 2)
         col_toolbar.pack_start(self.get_button('gtk-remove', 'Delete collection', self.del_collection), False, True, 2)
         col_toolbar.pack_start(gtk.HSeparator(), False, True, 7)
         col_toolbar.pack_start(self.get_button('gtk-go-forward', 'Add book to collection', self.add_file), False, True, 2)
@@ -77,13 +79,16 @@ class KindleUI:
         self.status("Select your Kindle's home folder")
         gtk.main()
 
-    def get_button(self, image, tooltip, cb):
+    def get_button(self, image, tooltip, cb, accelkey=None):
         button = gtk.Button()
         label = gtk.Image()
         label.set_from_stock(image, gtk.ICON_SIZE_LARGE_TOOLBAR)
         button.set_image(label)
         button.set_tooltip_text(tooltip)
         button.connect("clicked", cb)
+        if accelkey:
+            button.add_accelerator("activate", self.accel_group, ord(accelkey),
+                                   gtk.gdk.CONTROL_MASK, gtk.ACCEL_VISIBLE)
         return button
 
     def status(self, message):
@@ -117,7 +122,7 @@ class KindleUI:
                     fiter = colmodel.append(citer, [filename, namehash])
 
     def add_collection(self, widget):
-        (dialog, input_box) = self.add_collection_prompt("Add Collection", "New Collection name:")
+        (dialog, input_box) = self.collection_prompt("Add Collection", "New Collection name:")
         dialog.show_all()
         colname = ""
         if dialog.run() == gtk.RESPONSE_ACCEPT:
@@ -130,11 +135,13 @@ class KindleUI:
             treesel = self.colview.get_selection()
             treesel.unselect_all()
             treesel.select_iter(coliter)
+            treepath = treesel.get_selected_rows()[1][0]
+            self.colview.scroll_to_cell(treepath)
             self.db[colname] = kindle.Collection({ 'locale': 'en-US', 'items': [], 'lastAccess': 0})
         else:
             self.status("%s collection already exists" % colname)
 
-    def add_collection_prompt(self, title, label):
+    def collection_prompt(self, title, label):
         labeltext = label
         label = gtk.Label(labeltext)
         col_input = gtk.Entry()

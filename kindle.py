@@ -12,6 +12,8 @@ import re
 import json
 import sys
 
+import ebook
+
 KINDLEROOT = '/mnt/us'
 FILTER = ['pdf', 'mobi', 'prc', 'txt', 'tpz', 'azw', 'manga']
 FOLDERS = ['documents', 'pictures']
@@ -49,14 +51,6 @@ class CollectionDB(dict):
             tmpjson[tmpkey] = tmpvalue
         return tmpjson
 
-    # Returns a list of collection names containing a given filehash
-    def search(self, filehash):
-        cols = list()
-        for collection in self:
-            if self[collection].has_hash(filehash):
-                cols.append(collection)
-        return cols
-
     def in_collection(self, collection, filehash):
         if self[collection].has_hash(filehash):
             return True
@@ -66,6 +60,29 @@ class CollectionDB(dict):
     def add_filehash(self, collection, filehash):
         filehash = '*'+filehash
         self[collection]['items'].append(filehash)
+
+    def add_asin(self, collection, asin, booktype):
+        asin = "#%s^%s" % (asin, booktype)
+        self[collection]['items'].append(asin)
+
+class Ebook():
+    def __init__(self, path):
+        self.path = get_kindle_path(path)
+        self.hash = get_hash(self.path)
+        self.title = None
+        self.meta = None
+        self.asin = None
+        self.type = None
+        ext = os.path.splitext(path)[1][1:]
+        if ext in ['mobi', 'azw', 'prc']:
+            self.meta = ebook.Mobi(path)
+            self.title = self.meta.title
+            if 113 in self.meta.exth:
+                self.asin = self.meta.exth[113]
+            if 501 in self.meta.exth:
+                self.type = self.meta.exth[501]
+            if 503 in self.meta.exth:
+                self.title = self.meta.exth[503]
 
 class Kindle:
     '''Access a Kindle filesystem
@@ -82,18 +99,25 @@ class Kindle:
             
             for path in self.files:
                 regex = re.compile(r'.*?/(%s)' % '|'.join(FOLDERS))
-                self.get_filenodes(self.filetree, re.sub(regex, r'\1', self.files[path]).split('/'))
+                self.get_filenodes(self.filetree, re.sub(regex, r'\1', self.files[path].path).split('/'))
 
     def load_folder(self, path):
         sys.stdout.write("Loading " + path)
         for root, dirs, files in os.walk(os.path.join(self.root, path)):
             for filename in files:
                 if os.path.splitext(filename)[1][1:] in FILTER:
-                    kindlepath = self.get_kindle_path(root, filename)
-                    filehash = self.get_hash(kindlepath)
-                    self.files[filehash] = kindlepath
+                    fullpath = os.path.abspath(os.path.join(root, filename))
+                    book = Ebook(fullpath)
+                    self.files[book.hash] = book
                     sys.stdout.write(".")
         sys.stdout.write("\n")
+
+    def searchAsin(self, asin):
+        '''Returns the Ebook with asin
+        '''
+        for filehash in self.files:
+            if self.files[filehash].asin:
+                return self.files[filehash]
 
     # Adds files to the dictionary: tree
     def get_filenodes(self, tree, nodes):
@@ -106,24 +130,24 @@ class Kindle:
                 tree['files'] = list()
             tree['files'].append(nodes[0])
 
-    # Returns a full path on the kindle filesystem
-    def get_kindle_path(self, folder, filename):
-        return '/'.join([KINDLEROOT, re.sub(r'.*(documents|pictures)', r'\1', folder), filename]).replace('\\', '/')
-
-    # Returns a SHA-1 hash
-    def get_hash(self, path):
-        path = unicode(path).encode('utf-8')
-        return hashlib.sha1(path).hexdigest()
-
     # Checks if the specified folder is a Kindle filestructure
     def is_connected(self):
         docs = os.path.exists(os.path.join(self.root, 'documents'))
         sys = os.path.exists(os.path.join(self.root, 'system'))
         return docs and sys
 
-    def searchTitle(self, title):
-        matches = list()
-        for filehash in self.files:
-            if re.search(title, self.files[filehash], re.IGNORECASE):
-                matches.append((filehash, self.files[filehash]))
-        return matches
+# Returns a full path on the kindle filesystem
+def get_kindle_path(path):
+    path = os.path.normpath(path)
+    folder = os.path.dirname(path)
+    filename = os.path.basename(path)
+    return '/'.join([KINDLEROOT, re.sub(r'.*(documents|pictures)', r'\1', folder), filename]).replace('\\', '/')
+
+# Returns a SHA-1 hash
+def get_hash(path):
+    path = unicode(path).encode('utf-8')
+    return hashlib.sha1(path).hexdigest()
+
+if __name__ == "__main__":
+    k = Kindle("Kindle")
+    k.init_data()

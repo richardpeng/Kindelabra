@@ -14,17 +14,16 @@ import re
 import gtk
 import kindle
 
-VERSION = '0.1'
-FILTER = ['pdf', 'mobi', 'prc', 'txt', 'tpz', 'azw', 'manga']
+VERSION = '0.2'
 
 class KindleUI:
     '''Interface for manipulating a Kindle collection JSON file
     '''
     def __init__(self):
         self.root = os.getcwd()
-        self.filemodel = gtk.TreeStore(str, str)
+        self.filemodel = gtk.TreeStore(str, str, bool)
         self.fileview = self.get_view('Files', self.filemodel, 'fileview')
-        self.colmodel = gtk.TreeStore(str, str)
+        self.colmodel = gtk.TreeStore(str, str, str)
         self.colview = self.get_view('Collections', self.colmodel, 'colview')
 
         self.window = gtk.Window(gtk.WINDOW_TOPLEVEL)
@@ -112,14 +111,30 @@ class KindleUI:
             else:
                 self.status("Kindle files not found")
 
-    def get_collections(self, colmodel):
+    def get_collections(self):
         for collection in self.db:
-            citer = colmodel.append(None, [collection, ""])
+            citer = self.colmodel.append(None, [collection, "", ""])
             for namehash in self.db[collection]['items']:
-                namehash = str(namehash.lstrip("*"))
+                if re.match('\*[\w]', namehash):
+                    namehash = str(namehash.lstrip("*"))
+                asin = re.match('\#(\w+)\^\w{4}', namehash)
+                if asin:
+                    asin = asin.group(1)
+                    book = self.kindle.searchAsin(asin)
+                    namehash = book.hash
                 if namehash in self.kindle.files:
-                    filename = os.path.basename(self.kindle.files[namehash])
-                    fiter = colmodel.append(citer, [filename, namehash])
+                    if self.kindle.files[namehash].title:
+                        filename = self.kindle.files[namehash].title
+                    else:
+                        filename = os.path.basename(self.kindle.files[namehash].path)
+                    if self.kindle.files[namehash].asin:
+                        asin = self.kindle.files[namehash].asin
+                    else:
+                        asin = ""
+                    fiter = self.colmodel.append(citer, [filename, namehash, asin])
+                    #if asin != "":
+                    #else:
+                    #for row in self.filemodel
 
     def add_collection(self, widget):
         (dialog, input_box) = self.collection_prompt("Add Collection", "New Collection name:")
@@ -131,7 +146,7 @@ class KindleUI:
         if colname == "":
             return
         if not colname in self.db:
-            coliter = self.colmodel.append(None, [colname, ""])
+            coliter = self.colmodel.append(None, [colname, "", ""])
             treesel = self.colview.get_selection()
             treesel.unselect_all()
             treesel.select_iter(coliter)
@@ -219,6 +234,16 @@ class KindleUI:
         piter = model[path].iter
         return model.get(piter, 0, 1)
 
+    def get_colpath_value(self, model, row):
+        if isinstance(row, gtk.TreeRowReference):
+            path = row.get_path()
+        elif isinstance(row, tuple):
+            path = row
+        else:
+            return None
+        piter = model[path].iter
+        return model.get(piter, 0, 1, 2)
+
     def get_hashes(self, filestore, filerows):
         filehashes = list()
         for row in filerows:
@@ -269,11 +294,15 @@ class KindleUI:
             for colpath, colname in targetcols:
                 colname = unicode(colname)
                 if colname in self.db:
-                    if not self.db.in_collection(colname, filehash):
-                        colstore.append(colstore[colpath].iter, [filename, filehash])
-                        self.db.add_filehash(colname, filehash)
-                    else:
-                        self.status("%s is already in collection %s" % (filename, colname))
+                    try:
+                        asin = self.kindle.files[filehash].asin
+                        if not self.db.in_collection(colname, asin):
+                            colstore.append(colstore[colpath].iter, [filename, filehash, asin])
+                            self.db.add_asin(colname, self.kindle.files[filehash].asin, self.kindle.files[filehash].type)
+                    except TypeError:
+                        if not self.db.in_collection(colname, filehash):
+                            colstore.append(colstore[colpath].iter, [filename, filehash, ""])
+                            self.db.add_filehash(colname, filehash)
                 else:
                     self.status("No such collection:" + colname)
         self.colview.expand_all()
@@ -288,10 +317,16 @@ class KindleUI:
         for row in range(len(ref)):
             gtkrow = ref[row]
             path = gtkrow.get_path()
-            (filename, filehash) = self.get_path_value(colstore, gtkrow)
-            collection = unicode(self.get_path_value(colstore, (path[0], ))[0])
-            jsonhash = '*' + filehash
-            if self.db[collection].has_hash(filehash):
+            (filename, filehash, asin) = self.get_colpath_value(colstore, gtkrow)
+            collection = unicode(self.get_colpath_value(colstore, (path[0], ))[0])
+            if asin != '':
+                book = self.kindle.searchAsin(asin)
+                asin = "#%s^%s" % (book.asin, book.type)
+                if self.db[collection].has_hash(asin):
+                    self.db[collection]['items'].remove(asin)
+                    colstore.remove(colstore[path].iter)
+            elif self.db[collection].has_hash(filehash):
+                jsonhash = '*' + filehash
                 self.db[collection]['items'].remove(jsonhash)
                 colstore.remove(colstore[path].iter)
             else:
@@ -316,7 +351,7 @@ class KindleUI:
     def revert(self, widget):
         self.db = kindle.CollectionDB(self.colfile)
         self.colmodel.clear()
-        self.get_collections(self.colmodel)
+        self.get_collections()
         self.colview.expand_all()
         self.status("Kindle collections reloaded")
 
@@ -344,10 +379,12 @@ class KindleUI:
         for node in tree:
             if node == 'files':
                 for filename in tree['files']:
-                    filehash = self.kindle.get_hash('/mnt/us' + '/'.join([path, filename]))
-                    filemodel.append(piter, [filename, filehash])
+                    filehash = kindle.get_hash('/mnt/us' + '/'.join([path, filename]))
+                    if filehash in self.kindle.files and self.kindle.files[filehash].title:
+                        filename = self.kindle.files[filehash].title
+                    filemodel.append(piter, [filename, filehash, False])
             else:
-                niter = filemodel.append(piter, [node, ""])
+                niter = filemodel.append(piter, [node, "", False])
                 self.get_files(filemodel, tree[node], niter, '/'.join([path,node]))
 
     def refresh(self, widget):

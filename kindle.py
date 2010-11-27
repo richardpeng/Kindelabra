@@ -74,7 +74,7 @@ class Ebook():
         self.asin = None
         self.type = None
         ext = os.path.splitext(path)[1][1:]
-        if ext in ['mobi', 'azw', 'prc']:
+        if ext in ['mobi', 'azw']:
             self.meta = ebook.Mobi(path)
             self.title = self.meta.title
             if 113 in self.meta.exth:

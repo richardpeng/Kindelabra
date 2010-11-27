@@ -13,7 +13,7 @@ class Sectionizer:
         self.f = file(filename, perm)
         header = self.f.read(78)
         self.ident = header[0x3C:0x3C+8]
-        if self.ident != 'BOOKMOBI' and self.ident != 'TEXtREAd':
+        if self.ident != 'BOOKMOBI':
             raise ValueError('invalid file format')
         num_sections, = struct.unpack_from('>H', header, 76)
         sections = self.f.read(num_sections*8)
@@ -32,6 +32,7 @@ class Mobi:
         mobi_raw = header[:len_mobi]
         titleoffset, titlelen = struct.unpack_from('>LL', mobi_raw, 84)
         self.title = header[titleoffset:titleoffset+titlelen]
+        print ">>>",header
         len_exth, = struct.unpack_from('>L', header, len_mobi+4)
         exth_records = header[len_mobi:len_mobi+len_exth][12:]
         self.exth = dict()

@@ -32,7 +32,6 @@ class Mobi:
         mobi_raw = header[:len_mobi]
         titleoffset, titlelen = struct.unpack_from('>LL', mobi_raw, 84)
         self.title = header[titleoffset:titleoffset+titlelen]
-        print ">>>",header
         len_exth, = struct.unpack_from('>L', header, len_mobi+4)
         exth_records = header[len_mobi:len_mobi+len_exth][12:]
         self.exth = dict()
@@ -41,11 +40,3 @@ class Mobi:
             recdata = exth_records[8:reclen]
             self.exth[rectype] = recdata
             exth_records = exth_records[reclen:]
-
-def main():
-    m = Mobi('book.azw')
-    if 113 in m.exth:
-        print m.exth[113]
-
-if __name__ == "__main__":
-    main()

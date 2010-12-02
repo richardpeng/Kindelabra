@@ -26,17 +26,20 @@ class Sectionizer:
 
 class Mobi:
     def __init__(self, filename):
-        sections = Sectionizer(filename, 'rb')
-        header = sections.loadSection(0)
-        len_mobi = struct.unpack_from('>L', header, 20)[0] + 16
-        mobi_raw = header[:len_mobi]
-        titleoffset, titlelen = struct.unpack_from('>LL', mobi_raw, 84)
-        self.title = header[titleoffset:titleoffset+titlelen]
-        len_exth, = struct.unpack_from('>L', header, len_mobi+4)
-        exth_records = header[len_mobi:len_mobi+len_exth][12:]
-        self.exth = dict()
-        while len(exth_records) > 8:
-            rectype, reclen = struct.unpack_from('>LL', exth_records)
-            recdata = exth_records[8:reclen]
-            self.exth[rectype] = recdata
-            exth_records = exth_records[reclen:]
+        try:
+            sections = Sectionizer(filename, 'rb')
+            header = sections.loadSection(0)
+            len_mobi = struct.unpack_from('>L', header, 20)[0] + 16
+            mobi_raw = header[:len_mobi]
+            titleoffset, titlelen = struct.unpack_from('>LL', mobi_raw, 84)
+            self.title = header[titleoffset:titleoffset+titlelen]
+            len_exth, = struct.unpack_from('>L', header, len_mobi+4)
+            exth_records = header[len_mobi:len_mobi+len_exth][12:]
+            self.exth = dict()
+            while len(exth_records) > 8:
+                rectype, reclen = struct.unpack_from('>LL', exth_records)
+                recdata = exth_records[8:reclen]
+                self.exth[rectype] = recdata
+                exth_records = exth_records[reclen:]
+        except ValueError:
+            self.title = None

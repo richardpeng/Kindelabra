@@ -76,13 +76,16 @@ class Ebook():
         ext = os.path.splitext(path)[1][1:]
         if ext in ['mobi', 'azw']:
             self.meta = ebook.Mobi(path)
-            self.title = self.meta.title
-            if 113 in self.meta.exth:
-                self.asin = self.meta.exth[113]
-            if 501 in self.meta.exth:
-                self.type = self.meta.exth[501]
-            if 503 in self.meta.exth:
-                self.title = self.meta.exth[503]
+            if self.meta.title:
+                self.title = self.meta.title
+                if 113 in self.meta.exth:
+                    self.asin = self.meta.exth[113]
+                if 501 in self.meta.exth:
+                    self.type = self.meta.exth[501]
+                if 503 in self.meta.exth:
+                    self.title = self.meta.exth[503]
+            else:
+                print "\nMetadata read error:", path
 
 class Kindle:
     '''Access a Kindle filesystem

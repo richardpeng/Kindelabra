@@ -34,7 +34,7 @@ class KindleUI:
         self.window.add_accel_group(self.accel_group)
         vbox_main = gtk.VBox()
         filechooserdiag = gtk.FileChooserDialog("Select your Kindle folder", self.window,
-                                     gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER, 
+                                     gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
                                     (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT,
                                      gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
         filechooserdiag.set_current_folder(os.path.join(self.root, 'system'))
@@ -47,7 +47,7 @@ class KindleUI:
         file_toolbar.pack_start(self.get_button('gtk-open', 'Open collection file', self.open_collection, "O"), False, True, 2)
         file_toolbar.pack_start(gtk.VSeparator(), False, True, 2)
         file_toolbar.pack_start(self.get_button('gtk-save', 'Save collection file', self.save, "S"), False, True, 2)
-        
+
         hbox_main = gtk.HBox()
         filescroll = gtk.ScrolledWindow()
         filescroll.add(self.fileview)
@@ -66,7 +66,7 @@ class KindleUI:
         hbox_main.add(filescroll)
         hbox_main.pack_start(col_toolbar, False, False, 2)
         hbox_main.add(colscroll)
-        
+
         self.statusbar = gtk.Statusbar()
 
         vbox_main.pack_start(file_toolbar, False)
@@ -120,8 +120,12 @@ class KindleUI:
                 asin = re.match('\#(\w+)\^\w{4}', namehash)
                 if asin:
                     asin = asin.group(1)
-                    book = self.kindle.searchAsin(asin)
-                    namehash = book.hash
+                    try:
+                        book = self.kindle.searchAsin(asin)
+                        namehash = book.hash
+                    except:
+                        namehash = None
+                        print "! ASIN %s is in a collection, but not on the device!" %( asin )
                 if namehash in self.kindle.files:
                     if self.kindle.files[namehash].title:
                         filename = self.kindle.files[namehash].title
@@ -273,7 +277,7 @@ class KindleUI:
         self.statusbar.pop(1)
         (filestore, filerows) = self.fileview.get_selection().get_selected_rows()
         (colstore, colrows) = self.colview.get_selection().get_selected_rows()
-        
+
         colpaths = list()
         for row in colrows:
             if len(row) == 1:
@@ -331,7 +335,7 @@ class KindleUI:
                 colstore.remove(colstore[path].iter)
             else:
                 self.status("File not in collection")
-            
+
     def get_view(self, title, model, name):
         treeview = gtk.TreeView(model)
         treeview.set_name(name)
@@ -396,7 +400,7 @@ class KindleUI:
 
     def open_collection(self, widget):
         dialog = gtk.FileChooserDialog("Open a collection", self.window,
-                                     gtk.FILE_CHOOSER_ACTION_OPEN, 
+                                     gtk.FILE_CHOOSER_ACTION_OPEN,
                                     (gtk.STOCK_CANCEL, gtk.RESPONSE_REJECT,
                                      gtk.STOCK_OK, gtk.RESPONSE_ACCEPT))
         dialog.set_current_folder(os.path.join(self.root, 'system'))

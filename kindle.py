@@ -99,7 +99,7 @@ class Kindle:
         if self.is_connected():
             for folder in FOLDERS:
                 self.load_folder(folder)
-            
+
             for path in self.files:
                 regex = re.compile(r'.*?/(%s)' % '|'.join(FOLDERS))
                 self.get_filenodes(self.filetree, re.sub(regex, r'\1', self.files[path].path).split('/'))
@@ -119,8 +119,12 @@ class Kindle:
         '''Returns the Ebook with asin
         '''
         for filehash in self.files:
-            if self.files[filehash].asin:
-                return self.files[filehash]
+            if self.files[filehash].asin == asin:
+                asin_hash = self.files[filehash]
+                break
+            else:
+                asin_hash = None
+        return asin_hash
 
     # Adds files to the dictionary: tree
     def get_filenodes(self, tree, nodes):

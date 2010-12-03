@@ -15,7 +15,7 @@ import sys
 import ebook
 
 KINDLEROOT = '/mnt/us'
-FILTER = ['pdf', 'mobi', 'prc', 'txt', 'tpz', 'azw', 'manga']
+FILTER = ['pdf', 'mobi', 'prc', 'txt', 'tpz', 'azw1', 'azw', 'manga', 'azw2']
 FOLDERS = ['documents', 'pictures']
 
 class Collection(dict):
@@ -73,7 +73,7 @@ class Ebook():
         self.meta = None
         self.asin = None
         self.type = None
-        ext = os.path.splitext(path)[1][1:]
+        ext = os.path.splitext(path)[1][1:].lower()
         if ext in ['mobi', 'azw']:
             self.meta = ebook.Mobi(path)
             if self.meta.title:
@@ -86,6 +86,26 @@ class Ebook():
                     self.title = self.meta.exth[503]
             else:
                 print "\nMetadata read error:", path
+        elif ext in ['tpz', 'azw1']:
+            self.meta = ebook.Topaz(path)
+            if self.meta.title:
+                self.title = self.meta.title
+                if self.meta.asin:
+                    self.asin = self.meta.asin
+                if self.meta.type:
+                    self.type = self.meta.type
+            else:
+                print "\nTopaz metadata read error:", path
+        elif ext in ['azw2']:
+            self.meta = ebook.Kindlet(path)
+            if self.meta.title:
+                self.title = self.meta.title
+            if self.meta.asin:
+                self.asin = self.meta.asin
+                self.type = 'AZW2'
+            else:
+                # Couldn't get an ASIN, developper app? We'll use the hash instead, which is what the Kindle itself does, so no harm done.
+                print "\nKindlet Metadata read error, assuming developper app:", path
 
 class Kindle:
     '''Access a Kindle filesystem
@@ -108,7 +128,7 @@ class Kindle:
         sys.stdout.write("Loading " + path)
         for root, dirs, files in os.walk(os.path.join(self.root, path)):
             for filename in files:
-                if os.path.splitext(filename)[1][1:] in FILTER:
+                if os.path.splitext(filename)[1][1:].lower() in FILTER:
                     fullpath = os.path.abspath(os.path.join(root, filename))
                     book = Ebook(fullpath)
                     self.files[book.hash] = book

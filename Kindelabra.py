@@ -40,7 +40,7 @@ class KindleUI:
         filechooserdiag.set_current_folder(os.path.join(self.root, 'system'))
         self.filechooser = gtk.FileChooserButton(filechooserdiag)
         self.filechooser.connect("current-folder-changed", self.load)
-        
+
         file_toolbar = gtk.HBox()
         file_toolbar.pack_start(self.filechooser, True, True, 2)
         file_toolbar.pack_start(self.get_button('gtk-refresh', 'Refresh files', self.refresh), False, True, 2)
@@ -125,7 +125,7 @@ class KindleUI:
                         namehash = book.hash
                     except:
                         namehash = None
-                        print "! ASIN %s is in a collection, but not on the device!" %( asin )
+                        print "! ASIN %s belongs to collection %s but wasn't found on the device!" %( asin, collection )
                 if namehash in self.kindle.files:
                     if self.kindle.files[namehash].title:
                         filename = self.kindle.files[namehash].title
@@ -323,7 +323,7 @@ class KindleUI:
             path = gtkrow.get_path()
             (filename, filehash, asin) = self.get_colpath_value(colstore, gtkrow)
             collection = unicode(self.get_colpath_value(colstore, (path[0], ))[0])
-            if asin != '':
+            if asin and asin != '':
                 book = self.kindle.searchAsin(asin)
                 asin = "#%s^%s" % (book.asin, book.type)
                 if self.db[collection].has_hash(asin):

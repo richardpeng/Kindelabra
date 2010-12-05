@@ -309,7 +309,7 @@ class KindleUI:
                             self.db.add_filehash(colname, filehash)
                 else:
                     self.status("No such collection:" + colname)
-        self.colview.expand_all()
+        #self.colview.expand_all()
 
     def del_file(self, widget):
         self.statusbar.pop(1)

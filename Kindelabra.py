@@ -117,7 +117,7 @@ class KindleUI:
             for namehash in self.db[collection]['items']:
                 if re.match('\*[\w]', namehash):
                     namehash = str(namehash.lstrip("*"))
-                asin = re.match('\#(\w+)\^\w{4}', namehash)
+                asin = re.match('\#([\w\-]+)\^\w{4}', namehash)
                 if asin:
                     asin = asin.group(1)
                     try:

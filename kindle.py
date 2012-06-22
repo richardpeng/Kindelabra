@@ -36,7 +36,7 @@ class CollectionDB(dict):
             with open(colfile) as colfile:
                 tmpjson = json.load(colfile)
         except IOError:
-	        tmpjson = json.loads('{}'
+	        tmpjson = json.loads('{}')
         tmpdict = dict()
         for key in iter(tmpjson.keys()):
             split = key.rpartition('@')

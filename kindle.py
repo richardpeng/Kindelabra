@@ -31,15 +31,19 @@ class CollectionDB(dict):
     '''Holds a collection database
     '''
     def __init__(self, colfile):
-        with open(colfile) as colfile:
-            tmpjson = json.load(colfile)
-            tmpdict = dict()
-            for key in iter(tmpjson.keys()):
-                split = key.rpartition('@')
-                colname = unicode(split[0])
-                tmpdict[colname] = Collection(tmpjson[key])
-                tmpdict[colname]['locale'] = split[2]
-            dict.__init__(self, tmpdict)
+        #Fixes IOError if no collections.json is on the kindle
+        try:
+            with open(colfile) as colfile:
+                tmpjson = json.load(colfile)
+        except IOError:
+	        tmpjson = json.loads('{}'
+        tmpdict = dict()
+        for key in iter(tmpjson.keys()):
+            split = key.rpartition('@')
+            colname = unicode(split[0])
+            tmpdict[colname] = Collection(tmpjson[key])
+            tmpdict[colname]['locale'] = split[2]
+        dict.__init__(self, tmpdict)
 
     # Converts the collection back to Kindle JSON format
     def toKindleDb(self):

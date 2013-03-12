@@ -15,7 +15,7 @@ import sys
 import ebook
 
 KINDLEROOT = '/mnt/us'
-FILTER = ['pdf', 'mobi', 'prc', 'txt', 'tpz', 'azw1', 'azw', 'manga', 'azw2']
+FILTER = ['pdf', 'mobi', 'prc', 'txt', 'tpz', 'azw1', 'azw', 'manga', 'azw2', 'zip']
 FOLDERS = ['documents', 'pictures']
 
 class Collection(dict):
